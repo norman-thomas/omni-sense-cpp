@@ -3,8 +3,6 @@
 #include <Adafruit_MQTT.h>
 #include <Adafruit_MQTT_Client.h>
 
-#include <Adafruit_BMP280.h>
-
 #include "wifi.h"
 #include "mqtt.h"
 #include "bmp280.h"
