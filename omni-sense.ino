@@ -1,69 +1,91 @@
 #include <ESP8266WiFi.h>
 
-#include <Adafruit_MQTT.h>
-#include <Adafruit_MQTT_Client.h>
+#include <MQTTClient.h>
+
+#include <set>
+#include <map>
 
 #include "wifi.h"
 #include "mqtt.h"
-#include "bmp280.h"
-#include "rain.h"
+#include "bme280.h"
+//#include "bmp280.h"
+//#include "rain.h"
 
 #include "credentials.h"
 
+//#define MQTT_PREFIX_LOCATION ""
+#define MQTT_PREFIX_ROOM "wohnzimmer"
+#define MQTT_PREFIX MQTT_PREFIX_ROOM "/sensors"
+
+#define MQTT_TEMPERATURE MQTT_PREFIX "/temperature"
+#define MQTT_HUMIDITY MQTT_PREFIX "/humidity"
+#define MQTT_PRESSURE MQTT_PREFIX "/pressure"
+//#define MQTT_RAIN MQTT_PREFIX "/rain"
+
+#define MQTT_MEASURE "environment/measure"
+
+#define MIN_DELAY 0
+
+/*
+ * Wemos D1 Mini
+const int sclPin = D1;
+const int sdaPin = D2;
+*/
+
 WiFiClient wifiClient;
-Adafruit_MQTT_Client mqttClient(&wifiClient, AIO_SERVER, AIO_SERVERPORT);
-Adafruit_MQTT_Publish pressure = Adafruit_MQTT_Publish(&mqttClient, "wohnzimmer/pressure", 1);
-Adafruit_MQTT_Publish temperature = Adafruit_MQTT_Publish(&mqttClient, "wohnzimmer/temp2", 1);
-Adafruit_MQTT_Publish rainWater = Adafruit_MQTT_Publish(&mqttClient, "wohnzimmer/rain", 1);
-Adafruit_MQTT_Subscribe measure = Adafruit_MQTT_Subscribe(&mqttClient, "airquality/measure", 1);
+MQTTClient mqttClient;
 
-const std::vector<Adafruit_MQTT_Subscribe> mqtt_subscriptions = { measure };
+const std::vector<const char*> mqtt_subscriptions = { MQTT_MEASURE };
 
-unsigned long lastMeasurement = 0;
+unsigned long lastMeasurementTime = 0;
+bme280::Measurement lastMeasurement_bme280;
 
 void setup() {
   pinMode(BUILTIN_LED, OUTPUT);
   pinMode(A0, INPUT);
   Serial.begin(115200);
 
-  bmp280::setup();
+  mqttClient.begin(MQTT_SERVER, MQTT_SERVERPORT, wifiClient);
+  mqttClient.onMessage(process_mqtt_subscriptions);
+
+  bme280::setup();
   wifi::maintain_wifi_connection(WLAN_SSID, WLAN_PASS);
-  bool reconnected = mqtt::maintain_mqtt_connection(mqttClient);
-  mqtt::maintain_mqtt_subscriptions(mqttClient, mqtt_subscriptions, reconnected);
+  mqtt::maintain_connection(mqttClient, MQTT_PREFIX_ROOM, mqtt_subscriptions);
 }
 
-void process_mqtt_subscriptions() {
-  Adafruit_MQTT_Subscribe *subscription;
-  while ((subscription = mqttClient.readSubscription(5000))) {
-    if (subscription == &measure) {
-      Serial.print(F("Got: "));
-      Serial.println((char *)measure.lastread);
-    }
+void process_mqtt_subscriptions(String &topic, String &payload) {
+  if (topic.equals(MQTT_MEASURE)) {
+    Serial.println("Got MQTT topic 'measure'");
+    do_all();
   }
+}
+
+void do_all() {
+  long now = millis();
+  if (now - lastMeasurementTime > MIN_DELAY) {
+    lastMeasurementTime = now;
+    lastMeasurement_bme280 = bme280::measure();
+  }
+
+  Serial.print("temperature: ");
+  Serial.println(lastMeasurement_bme280.temperature, 2);
+  Serial.print("humidity: ");
+  Serial.println(lastMeasurement_bme280.humidity, 2);
+  Serial.print("pressure: ");
+  Serial.println(lastMeasurement_bme280.pressure, 2);
+  Serial.print("altitude: ");
+  Serial.println(lastMeasurement_bme280.altitude, 2);
+  
+  //rainWater.publish(r);
+  mqttClient.publish(MQTT_TEMPERATURE, String(lastMeasurement_bme280.temperature));
+  mqttClient.publish(MQTT_HUMIDITY, String(lastMeasurement_bme280.humidity));
+  mqttClient.publish(MQTT_PRESSURE, String(lastMeasurement_bme280.pressure));
 }
 
 void loop() {
   wifi::maintain_wifi_connection(WLAN_SSID, WLAN_PASS);
-  bool reconnected = mqtt::maintain_mqtt_connection(mqttClient);
-  mqtt::maintain_mqtt_subscriptions(mqttClient, mqtt_subscriptions, reconnected);
+  mqtt::maintain_connection(mqttClient, MQTT_PREFIX_ROOM, mqtt_subscriptions);
 
-  process_mqtt_subscriptions();
-
-  long now = millis();
-  if (now - lastMeasurement > 10000) {
-    lastMeasurement = now;
-  
-    double temp = bmp280::bmp.readTemperature();
-    double pres = bmp280::bmp.readPressure();
-    int r = rain::measure(A0);
-
-    Serial.println(r);
-    Serial.println(temp, 2);
-    Serial.println(pres, 2);
-    
-    rainWater.publish(r);
-    pressure.publish(pres);
-    temperature.publish(temp);
-  }
+  mqttClient.loop();
 }
 

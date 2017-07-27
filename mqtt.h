@@ -1,7 +1,7 @@
-#include <Adafruit_MQTT_Client.h>
+#include <MQTTClient.h>
 #include <vector>
 
 namespace mqtt {
-  bool maintain_mqtt_connection(Adafruit_MQTT_Client mqtt);
-  void maintain_mqtt_subscriptions(Adafruit_MQTT_Client mqtt, std::vector<Adafruit_MQTT_Subscribe> subscriptions, bool reconnected);
+  bool maintain_connection(MQTTClient &mqtt, const char* client_id, const std::vector<const char*> &topics);
+  void maintain_subscriptions(MQTTClient &mqtt, const std::vector<const char*> &topics);
 }

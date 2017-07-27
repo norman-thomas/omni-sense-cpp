@@ -1,28 +1,34 @@
 #include "mqtt.h"
 
 namespace mqtt {
-  bool maintain_mqtt_connection(Adafruit_MQTT_Client mqtt) {
+  bool maintain_connection(MQTTClient &mqtt, const char* client_id, const std::vector<const char*> &topics) {
+    if (mqtt.connected())
+      return false;
+
     bool reconnected = false;
+    unsigned int count = 0;
     while (!mqtt.connected()) {
-      Serial.print("Attempting MQTT connection...");
-      mqtt.will("mqtt/connect", "myName");
-      if (mqtt.connect()) {
+      Serial.println("Attempting MQTT connection...");
+      if (mqtt.connect(client_id)) {
+        Serial.println();
         Serial.println("connected");
+        maintain_subscriptions(mqtt, topics);
         reconnected = true;
       } else {
-        Serial.print("failed, try again in 5 seconds");
+        count++;
+        Serial.print(".");
+        Serial.print(count);
+        Serial.print(".");
         delay(5000);
       }
     }
+    Serial.println("done.");
     return reconnected;
   }
 
-  void maintain_mqtt_subscriptions(Adafruit_MQTT_Client mqtt, std::vector<Adafruit_MQTT_Subscribe> subscriptions, bool reconnected) {
-    if (!reconnected)
-      return;
-
-    for (Adafruit_MQTT_Subscribe sub : subscriptions) {
-      mqtt.subscribe(&sub);
+  void maintain_subscriptions(MQTTClient &mqtt, const std::vector<const char*> &topics) {
+    for (auto topic : topics) {
+      mqtt.subscribe(topic);
     }
   }
 }
