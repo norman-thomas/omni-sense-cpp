@@ -27,8 +27,8 @@
 
 //#define MQTT_RAIN MQTT_PREFIX "/rain"
 
-#define MQTT_MEASURE "environment/measure"
-#define MQTT_MEASURE_DUST "airquality/measure"
+#define MQTT_MEASURE "triggers/measure/environment"
+#define MQTT_MEASURE_DUST "triggers/measure/airquality"
 
 #define MIN_DELAY 0
 #define DUST_SAMPLE_TIME_MS 30000
@@ -69,11 +69,11 @@ void setup() {
 
 void process_mqtt_subscriptions(String &topic, String &payload) {
   if (topic.equals(MQTT_MEASURE)) {
-    Serial.println("Got MQTT topic 'environment/measure'");
+    Serial.println("Got MQTT topic 'triggers/measure/environment'");
     do_weather();
   }
   else if (topic.equals(MQTT_MEASURE_DUST)) {
-    Serial.println("Got MQTT topic 'airquality/measure'");
+    Serial.println("Got MQTT topic 'triggers/measure/airquality'");
     do_dust();
   }
 }
