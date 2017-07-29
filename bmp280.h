@@ -1,7 +1,9 @@
+#ifndef OMNI_BMP280_H_
+#define OMNI_BMP280_H_
+
 #include <Adafruit_BMP280.h>
 
 namespace bmp280 {
-  static Adafruit_BMP280 bmp;
   struct Measurement {
     double temperature;
     double pressure;
@@ -11,3 +13,4 @@ namespace bmp280 {
   Measurement measure();
 }
 
+#endif

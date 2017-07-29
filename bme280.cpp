@@ -2,13 +2,15 @@
 #include "utils.h"
 
 namespace bme280 {
+  static Adafruit_BME280 sensor;
+
   bool setup() {
-    bool status = bme.begin(0x76);
+    bool status = sensor.begin(0x76);
     if (!status) {
       Serial.println("Could not find a valid BME280 sensor, check wiring!");
     }
     else {
-      bme.setSampling(
+      sensor.setSampling(
           Adafruit_BME280::MODE_FORCED,
           Adafruit_BME280::SAMPLING_X1, // temperature
           Adafruit_BME280::SAMPLING_X1, // pressure
@@ -20,13 +22,13 @@ namespace bme280 {
   }
 
   Measurement measure(float sealevel) {
-    bme.takeForcedMeasurement();
+    sensor.takeForcedMeasurement();
 
     Measurement measurement;
-    measurement.temperature = utils::roundReading(bme.readTemperature());
-    measurement.humidity = utils::roundReading(bme.readHumidity());
-    measurement.pressure = utils::roundReading(bme.readPressure() / 100.0);
-    measurement.altitude = utils::roundReading(bme.readAltitude(sealevel));
+    measurement.temperature = utils::roundReading(sensor.readTemperature());
+    measurement.humidity = utils::roundReading(sensor.readHumidity());
+    measurement.pressure = utils::roundReading(sensor.readPressure() / 100.0);
+    measurement.altitude = utils::roundReading(sensor.readAltitude(sealevel));
     return measurement;
   }
 }

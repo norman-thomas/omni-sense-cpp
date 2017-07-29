@@ -1,5 +1,5 @@
-#ifndef CREDENTIALS_H_
-#define CREDENTIALS_H_
+#ifndef OMNI_CREDENTIALS_H_
+#define OMNI_CREDENTIALS_H_
 
 #define WLAN_SSID        ""
 #define WLAN_PASS        ""

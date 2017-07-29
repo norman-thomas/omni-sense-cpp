@@ -2,8 +2,10 @@
 #include "utils.h"
 
 namespace bmp280 {
+  static Adafruit_BMP280 sensor;
+
   bool setup() {
-    bool status = bmp.begin(0x76);
+    bool status = sensor.begin(0x76);
     if (!status) {
       Serial.println("Could not find a valid BMP280 sensor, check wiring!");
     }
@@ -12,8 +14,8 @@ namespace bmp280 {
 
   Measurement measure() {
     Measurement measurement;
-    measurement.temperature = utils::roundReading(bmp.readTemperature());
-    measurement.pressure = utils::roundReading(bmp.readPressure() / 100.0);
+    measurement.temperature = utils::roundReading(sensor.readTemperature());
+    measurement.pressure = utils::roundReading(sensor.readPressure() / 100.0);
     return measurement;
   }
 }
