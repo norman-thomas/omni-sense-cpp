@@ -125,6 +125,9 @@ void setup() {
 #endif
   wifi::maintain_wifi_connection(WLAN_SSID, WLAN_PASS);
   mqtt::maintain_connection(mqttClient, myName.c_str(), mqtt_subscriptions);
+
+  Serial.println("Switching off internal LED");
+  digitalWrite(BUILTIN_LED, HIGH);
 }
 
 void process_mqtt_subscriptions(String &topic, String &payload) {
