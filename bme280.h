@@ -1,8 +1,6 @@
 #ifndef OMNI_BME280_H_
 #define OMNI_BME280_H_
 
-#include <Adafruit_BME280.h>
-
 namespace bme280 {
   struct Measurement {
     double temperature;

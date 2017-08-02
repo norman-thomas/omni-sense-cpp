@@ -1,5 +1,7 @@
 #include "tsl2561.h"
 
+#include <Adafruit_TSL2561_U.h>
+
 namespace tsl2561 {
   Adafruit_TSL2561_Unified sensor = Adafruit_TSL2561_Unified(TSL2561_ADDR_FLOAT, 12345);
 

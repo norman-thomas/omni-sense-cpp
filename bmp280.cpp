@@ -1,6 +1,8 @@
 #include "bmp280.h"
 #include "utils.h"
 
+#include <Adafruit_BMP280.h>
+
 namespace bmp280 {
   static Adafruit_BMP280 sensor;
 

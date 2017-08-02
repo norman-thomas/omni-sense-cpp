@@ -1,5 +1,7 @@
 #include "tsl2591.h"
 
+#include <Adafruit_TSL2591.h>
+
 namespace tsl2591 {
   Adafruit_TSL2591 sensor = Adafruit_TSL2591(2591);
 

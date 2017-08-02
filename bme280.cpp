@@ -1,6 +1,8 @@
 #include "bme280.h"
 #include "utils.h"
 
+#include <Adafruit_BME280.h>
+
 namespace bme280 {
   static Adafruit_BME280 sensor;
 

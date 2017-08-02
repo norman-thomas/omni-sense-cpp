@@ -10,8 +10,9 @@
 //#define INCLUDE_BMP280
 //#define INCLUDE_PPD42NS
 //#define INCLUDE_RAIN
-//#define INCLUDE_TSL2561
-#define INCLUDE_TSL2591
+#define INCLUDE_SI7021
+#define INCLUDE_TSL2561
+//#define INCLUDE_TSL2591
 
 #include "wifi.h"
 #include "mqtt.h"
@@ -21,6 +22,9 @@
 #endif
 #ifdef INCLUDE_BMP280
   #include "bmp280.h"
+#endif
+#ifdef INCLUDE_SI7021
+  #include "si7021.h"
 #endif
 #ifdef INCLUDE_TSL2561
   #include "tsl2561.h"
@@ -38,7 +42,7 @@
 #include "credentials.h"
 
 #define MQTT_PREFIX_LOCATION ""
-#define MQTT_PREFIX_ROOM "wohnzimmer"
+#define MQTT_PREFIX_ROOM "schlafzimmer"
 #define MQTT_PREFIX MQTT_PREFIX_LOCATION MQTT_PREFIX_ROOM "/sensors"
 
 #define MQTT_TEMPERATURE MQTT_PREFIX "/temperature"
@@ -82,6 +86,9 @@ unsigned long lastMeasurementTime = 0;
 #ifdef INCLUDE_BME280
   bme280::Measurement lastMeasurement_bme280;
 #endif
+#ifdef INCLUDE_SI7021
+  si7021::Measurement lastMeasurement_si7021;
+#endif
 #ifdef INCLUDE_TSL2561
   tsl2561::Measurement lastMeasurement_tsl2561;
 #endif
@@ -106,6 +113,9 @@ void setup() {
 
 #ifdef INCLUDE_BME280
   bme280::setup();
+#endif
+#ifdef INCLUDE_SI7021
+  si7021::setup();
 #endif
 #ifdef INCLUDE_TSL2591
   tsl2591::setup();
@@ -135,6 +145,9 @@ void do_basic() {
 #ifdef INCLUDE_BME280
     lastMeasurement_bme280 = bme280::measure();
 #endif
+#ifdef INCLUDE_SI7021
+    lastMeasurement_si7021 = si7021::measure();
+#endif
 #ifdef INCLUDE_TSL2561
     lastMeasurement_tsl2561 = tsl2561::measure();
 #endif
@@ -154,19 +167,33 @@ void do_basic() {
   Serial.println(lastMeasurement_bme280.altitude, 2);
 
   //rainWater.publish(r);
-  mqttClient.publish(MQTT_TEMPERATURE, String(lastMeasurement_bme280.temperature));
-  mqttClient.publish(MQTT_HUMIDITY, String(lastMeasurement_bme280.humidity));
-  mqttClient.publish(MQTT_PRESSURE, String(lastMeasurement_bme280.pressure));
+  mqttClient.publish(MQTT_TEMPERATURE, String(lastMeasurement_bme280.temperature), true, 1);
+  mqttClient.publish(MQTT_HUMIDITY, String(lastMeasurement_bme280.humidity), true, 1);
+  mqttClient.publish(MQTT_PRESSURE, String(lastMeasurement_bme280.pressure), true, 1);
+#endif
+
+#ifdef INCLUDE_SI7021
+  Serial.print("temperature: ");
+  Serial.println(lastMeasurement_si7021.temperature, 2);
+  Serial.print("humidity: ");
+  Serial.println(lastMeasurement_si7021.humidity, 2);
+
+  //rainWater.publish(r);
+  mqttClient.publish(MQTT_TEMPERATURE, String(lastMeasurement_si7021.temperature), true, 1);
+  mqttClient.publish(MQTT_HUMIDITY, String(lastMeasurement_si7021.humidity), true, 1);
 #endif
 
 #ifdef INCLUDE_TSL2561
   Serial.print("lux: ");
   Serial.println(lastMeasurement_tsl2561.lux);
-  Serial.print("lux IR: ");
-  Serial.println(lastMeasurement_tsl2561.lux_ir);
+  Serial.print("visible: ");
+  Serial.println(lastMeasurement_tsl2561.visible);
+  Serial.print("IR: ");
+  Serial.println(lastMeasurement_tsl2561.ir);
 
-  mqttClient.publish(MQTT_LUMINOSITY, String(lastMeasurement_tsl2561.lux));
-  mqttClient.publish(MQTT_LUMINOSITY_IR, String(lastMeasurement_tsl2561.lux_ir));
+  mqttClient.publish(MQTT_LUMINOSITY, String(lastMeasurement_tsl2561.lux), true, 1);
+  mqttClient.publish(MQTT_VISIBLE, String(lastMeasurement_tsl2561.visible), true, 1);
+  mqttClient.publish(MQTT_IR, String(lastMeasurement_tsl2561.ir), true, 1);
 #endif
 
 #ifdef INCLUDE_TSL2591
@@ -177,9 +204,9 @@ void do_basic() {
   Serial.print("infrared: ");
   Serial.println(lastMeasurement_tsl2591.ir);
 
-  mqttClient.publish(MQTT_LUMINOSITY, String(lastMeasurement_tsl2591.lux));
-  mqttClient.publish(MQTT_VISIBLE, String(lastMeasurement_tsl2591.visible));
-  mqttClient.publish(MQTT_IR, String(lastMeasurement_tsl2591.ir));
+  mqttClient.publish(MQTT_LUMINOSITY, String(lastMeasurement_tsl2591.lux), true, 1);
+  mqttClient.publish(MQTT_VISIBLE, String(lastMeasurement_tsl2591.visible)), true, 1;
+  mqttClient.publish(MQTT_IR, String(lastMeasurement_tsl2591.ir), true, 1);
 #endif
 }
 
@@ -198,8 +225,8 @@ void do_dust() {
   Serial.print("dust concentration: ");
   Serial.println(lastMeasurement_ppd42ns.concentration, 2);
   
-  mqttClient.publish(MQTT_DUST_RATIO, String(lastMeasurement_ppd42ns.ratio));
-  mqttClient.publish(MQTT_DUST_CONCENTRATION, String(lastMeasurement_ppd42ns.concentration));
+  mqttClient.publish(MQTT_DUST_RATIO, String(lastMeasurement_ppd42ns.ratio), true, 1);
+  mqttClient.publish(MQTT_DUST_CONCENTRATION, String(lastMeasurement_ppd42ns.concentration), true, 1);
 #endif
 }
 

@@ -1,10 +1,10 @@
-#ifndef OMNI_BMP280_H_
-#define OMNI_BMP280_H_
+#ifndef OMNI_SI7021_H_
+#define OMNI_SI7021_H_
 
-namespace bmp280 {
+namespace si7021 {
   struct Measurement {
     double temperature;
-    double pressure;
+    double humidity;
   };
   
   bool setup();

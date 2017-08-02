@@ -1,7 +1,7 @@
 #ifndef OMNI_TSL2561_H_
 #define OMNI_TSL2561_H_
 
-#include <Adafruit_TSL2561_U.h>
+#include <stdint.h>
 
 namespace tsl2561 {
   struct Measurement {
