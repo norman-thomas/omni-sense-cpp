@@ -23,7 +23,7 @@ namespace bme280 {
     return status;
   }
 
-  Measurement measure(float sealevel) {
+  Measurement measure(std::map<String, String> &environment, float sealevel) {
     sensor.takeForcedMeasurement();
 
     Measurement measurement;
@@ -31,6 +31,12 @@ namespace bme280 {
     measurement.humidity = utils::roundReading(sensor.readHumidity());
     measurement.pressure = utils::roundReading(sensor.readPressure() / 100.0);
     measurement.altitude = utils::roundReading(sensor.readAltitude(sealevel));
+
+    environment["temperature"] = String(measurement.temperature);
+    environment["humidity"] = String(measurement.humidity);
+    environment["pressure"] = String(measurement.pressure);
+    environment["altitude"] = String(measurement.altitude);
+
     return measurement;
   }
 }

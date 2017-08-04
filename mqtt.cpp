@@ -8,7 +8,9 @@ namespace mqtt {
     bool reconnected = false;
     unsigned int count = 0;
     while (!mqtt.connected()) {
-      Serial.println("Attempting MQTT connection...");
+      Serial.print("Attempting MQTT connection with client_id=");
+      Serial.print(client_id);
+      Serial.println("...");
       if (mqtt.connect(client_id)) {
         Serial.println();
         Serial.println("connected");
@@ -19,7 +21,7 @@ namespace mqtt {
         Serial.print(".");
         Serial.print(count);
         Serial.print(".");
-        delay(5000);
+        delay(1000);
       }
     }
     Serial.println("done.");

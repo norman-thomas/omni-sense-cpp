@@ -16,6 +16,7 @@
 
 #include "wifi.h"
 #include "mqtt.h"
+#include "utils.h"
 
 #ifdef INCLUDE_BME280
   #include "bme280.h"
@@ -42,7 +43,7 @@
 #include "credentials.h"
 
 #define MQTT_PREFIX_LOCATION ""
-#define MQTT_PREFIX_ROOM "schlafzimmer"
+#define MQTT_PREFIX_ROOM "wohnzimmer"
 #define MQTT_PREFIX MQTT_PREFIX_LOCATION MQTT_PREFIX_ROOM "/sensors"
 
 #define MQTT_TEMPERATURE MQTT_PREFIX "/temperature"
@@ -53,13 +54,20 @@
 #define MQTT_IR MQTT_PREFIX "/ir"
 #define MQTT_UV MQTT_PREFIX "/uv"
 
+
+#define MQTT_JSON MQTT_PREFIX "/json"
+#define MQTT_ENVIRONMENT MQTT_JSON "/environment"
+#define MQTT_AIRQUALITY MQTT_JSON "/environment"
+
 #define MQTT_DUST_RATIO MQTT_PREFIX "/dustRatio"
 #define MQTT_DUST_CONCENTRATION MQTT_PREFIX "/dustConcentration"
 
 #define MQTT_RAIN MQTT_PREFIX "/rain"
 
-#define MQTT_MEASURE "triggers/measure/environment"
+#define MQTT_MEASURE_ENVIRONMENT "triggers/measure/environment"
 #define MQTT_MEASURE_DUST "triggers/measure/airquality"
+#define MQTT_MEASURE_SCHEDULE MQTT_MEASURE_ENVIRONMENT "/set_interval"
+#define MQTT_MEASURE_SCHEDULE_DUST MQTT_MEASURE_DUST "/set_interval"
 
 #define MIN_DELAY 0
 #define DUST_SAMPLE_TIME_MS 30000
@@ -71,17 +79,30 @@ const int sclPin = D1;
 const int sdaPin = D2;
 */
 
+String mqtt_client_id = "";
+
 WiFiClient wifiClient;
-MQTTClient mqttClient;
+MQTTClient mqttClient(512);
 
 const std::vector<const char*> mqtt_subscriptions = {
-  MQTT_MEASURE
+  MQTT_MEASURE_ENVIRONMENT,
+  MQTT_MEASURE_SCHEDULE
   #ifdef INCLUDE_PPD42NS
   , MQTT_MEASURE_DUST
+  , MQTT_MEASURE_SCHEDULE_DUST
   #endif
 };
 
-unsigned long lastMeasurementTime = 0;
+std::map<String, String> environment, airquality;
+
+unsigned long lastEnvironmentTime = 0;
+unsigned long lastDustTime = 0;
+
+unsigned long lastCronTime = 0;
+unsigned long lastDustCronTime = 0;
+
+long scheduled = 60; // default: 60sec
+long scheduledDust = 300; // default: 300sec
 
 #ifdef INCLUDE_BME280
   bme280::Measurement lastMeasurement_bme280;
@@ -104,7 +125,7 @@ void setup() {
   pinMode(A0, INPUT);
   Serial.begin(115200);
 
-  String myName = String(ESP.getChipId());
+  mqtt_client_id = String(MQTT_PREFIX_ROOM) + "-" + String(ESP.getChipId());
   Serial.print("ESP Chip ID: ");
   Serial.println(ESP.getChipId());
 
@@ -123,15 +144,19 @@ void setup() {
 #ifdef INCLUDE_TSL2561
   tsl2561::setup();
 #endif
-  wifi::maintain_wifi_connection(WLAN_SSID, WLAN_PASS);
-  mqtt::maintain_connection(mqttClient, myName.c_str(), mqtt_subscriptions);
+
+  maintain_connections();
 
   Serial.println("Switching off internal LED");
   digitalWrite(BUILTIN_LED, HIGH);
+
+  Serial.println("Performing an initial measurement");
+  do_basic();
+  do_dust();
 }
 
 void process_mqtt_subscriptions(String &topic, String &payload) {
-  if (topic.equals(MQTT_MEASURE)) {
+  if (topic.equals(MQTT_MEASURE_ENVIRONMENT)) {
     Serial.println("Got MQTT topic 'triggers/measure/environment'");
     do_basic();
   }
@@ -139,24 +164,51 @@ void process_mqtt_subscriptions(String &topic, String &payload) {
     Serial.println("Got MQTT topic 'triggers/measure/airquality'");
     do_dust();
   }
+  else if (topic.equals(MQTT_MEASURE_SCHEDULE)) {
+    Serial.println("Got MQTT topic 'triggers/measure/environment/set_interval'");
+    do_basic();
+    schedule(scheduled, payload);
+  }
+  else if (topic.equals(MQTT_MEASURE_SCHEDULE_DUST)) {
+    Serial.println("Got MQTT topic 'triggers/measure/airquality/set_interval'");
+    do_dust();
+    schedule(scheduledDust, payload);
+  }
+}
+
+void schedule(long &seconds, String &payload) {
+  if (payload.length() == 0 || payload.toInt() <= 0) {
+    seconds = 0;
+    Serial.println("Disabled scheduling");
+  }
+  else if (payload.toInt() > 0) {
+    seconds = payload.toInt();
+    Serial.print("Enabling scheduling, interval (secs) = ");
+    Serial.println(seconds);
+  }
 }
 
 void do_basic() {
-  long now = millis();
-  if (now - lastMeasurementTime > MIN_DELAY) {
-    lastMeasurementTime = now;
+  unsigned long now = millis();
+  if (now - lastEnvironmentTime > MIN_DELAY) {
+    lastEnvironmentTime = now;
 #ifdef INCLUDE_BME280
-    lastMeasurement_bme280 = bme280::measure();
+    lastMeasurement_bme280 = bme280::measure(environment);
 #endif
 #ifdef INCLUDE_SI7021
-    lastMeasurement_si7021 = si7021::measure();
+    lastMeasurement_si7021 = si7021::measure(environment);
 #endif
 #ifdef INCLUDE_TSL2561
-    lastMeasurement_tsl2561 = tsl2561::measure();
+    lastMeasurement_tsl2561 = tsl2561::measure(environment);
 #endif
 #ifdef INCLUDE_TSL2591
-    lastMeasurement_tsl2591 = tsl2591::measure();
+    lastMeasurement_tsl2591 = tsl2591::measure(environment);
 #endif
+  }
+
+  String json = utils::toJSON(environment);
+  if (json.length() > 0) {
+    mqttClient.publish(MQTT_ENVIRONMENT, json, false, 1);
   }
 
 #ifdef INCLUDE_BME280
@@ -169,9 +221,9 @@ void do_basic() {
   Serial.print("altitude: ");
   Serial.println(lastMeasurement_bme280.altitude, 2);
 
-  //rainWater.publish(r);
   mqttClient.publish(MQTT_TEMPERATURE, String(lastMeasurement_bme280.temperature), true, 1);
   mqttClient.publish(MQTT_HUMIDITY, String(lastMeasurement_bme280.humidity), true, 1);
+  mqttClient.publish(MQTT_PRESSURE, String(lastMeasurement_bme280.pressure), true, 1);
   mqttClient.publish(MQTT_PRESSURE, String(lastMeasurement_bme280.pressure), true, 1);
 #endif
 
@@ -214,12 +266,17 @@ void do_basic() {
 }
 
 void do_dust() {
-  long now = millis();
-  if (now - lastMeasurementTime > MIN_DELAY) {
-    lastMeasurementTime = now;
+  unsigned long now = millis();
+  if (now - lastDustTime > MIN_DELAY) {
+    lastDustTime = now;
 #ifdef INCLUDE_PPD42NS
-    lastMeasurement_ppd42ns = ppd42ns::measure(PPD_PIN, DUST_SAMPLE_TIME_MS);
+    lastMeasurement_ppd42ns = ppd42ns::measure(PPD_PIN, DUST_SAMPLE_TIME_MS, airquality);
 #endif
+  }
+
+  String json = utils::toJSON(airquality);
+  if (json.length() > 0) {
+    mqttClient.publish(MQTT_AIRQUALITY, json, false, 1);
   }
 
 #ifdef INCLUDE_PPD42NS
@@ -233,10 +290,35 @@ void do_dust() {
 #endif
 }
 
-void loop() {
+void maintain_connections() {
   wifi::maintain_wifi_connection(WLAN_SSID, WLAN_PASS);
-  mqtt::maintain_connection(mqttClient, MQTT_PREFIX_ROOM, mqtt_subscriptions);
+  mqtt::maintain_connection(mqttClient, mqtt_client_id.c_str(), mqtt_subscriptions);
+}
+
+void loop() {
+  maintain_connections();
 
   mqttClient.loop();
+  delay(10);
+
+  if (scheduled > 0) {
+    unsigned long now = millis();
+    if (now - lastCronTime >= scheduled * 1000) {
+      Serial.println("Running scheduled environment measurement");
+      lastCronTime = now;
+      do_basic();
+    }
+  }
+
+#ifdef PPD42NS
+  if (scheduledDust > 0) {
+    unsigned long now = millis();
+    if (now - lastDustCronTime >= scheduledDust * 1000) {
+      Serial.println("Running scheduled airquality measurement");
+      lastDustCronTime = now;
+      do_dust();
+    }
+  }
+#endif
 }
 

@@ -1,7 +1,9 @@
 #ifndef OMNI_TSL2561_H_
 #define OMNI_TSL2561_H_
 
+#include <Arduino.h>
 #include <stdint.h>
+#include <map>
 
 namespace tsl2561 {
   struct Measurement {
@@ -11,7 +13,7 @@ namespace tsl2561 {
   };
 
   bool setup();
-  Measurement measure();
+  Measurement measure(std::map<String, String> &environment);
 }
 
 #endif

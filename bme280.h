@@ -1,6 +1,9 @@
 #ifndef OMNI_BME280_H_
 #define OMNI_BME280_H_
 
+#include <Arduino.h>
+#include <map>
+
 namespace bme280 {
   struct Measurement {
     double temperature;
@@ -10,7 +13,7 @@ namespace bme280 {
   };
   
   bool setup();
-  Measurement measure(float sealevel = 1013.25f);
+  Measurement measure(std::map<String, String> &environment, float sealevel = 1013.25f);
 }
 
 #endif

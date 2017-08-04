@@ -17,7 +17,7 @@ namespace tsl2591 {
     return true;
   }
 
-  Measurement measure() {
+  Measurement measure(std::map<String, String> &environment) {
     Measurement m;
 
     uint32_t lum = sensor.getFullLuminosity();
@@ -28,6 +28,10 @@ namespace tsl2591 {
     m.lux = sensor.calculateLux(full, ir);
     m.ir = ir;
     m.visible = visible;
+
+    environment["lux"] = String(m.lux);
+    environment["visible"] = String(m.visible);
+    environment["ir"] = String(m.ir);
     
     return m;
   }

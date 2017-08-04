@@ -17,9 +17,9 @@ namespace tsl2561 {
     return true;
   }
 
-  Measurement measure() {
+  Measurement measure(std::map<String, String> &environment) {
     Measurement m;
-    
+
     sensors_event_t event;
     sensor.getEvent(&event);
 
@@ -28,7 +28,11 @@ namespace tsl2561 {
       m.visible = 0;
       m.ir = 0;
     }
-    
+
+    environment["lux"] = String(m.lux);
+    environment["visible"] = String(m.visible);
+    environment["ir"] = String(m.ir);
+
     return m;
   }
 }
