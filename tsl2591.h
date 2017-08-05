@@ -10,6 +10,7 @@ namespace tsl2591 {
     uint16_t lux;
     uint16_t ir;
     uint16_t visible;
+    uint16_t full;
   };
 
   bool setup();

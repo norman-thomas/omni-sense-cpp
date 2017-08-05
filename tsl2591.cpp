@@ -2,8 +2,13 @@
 
 #include <Adafruit_TSL2591.h>
 
+#include <vector>
+#include <utility>
+
 namespace tsl2591 {
   Adafruit_TSL2591 sensor = Adafruit_TSL2591(2591);
+  unsigned long MAX_LUX = 40000;
+  unsigned long MAX_VALUE = 65535;
 
   bool setup() {
     if(!sensor.begin())
@@ -12,26 +17,44 @@ namespace tsl2591 {
       return false;
     }
 
-    sensor.setGain(TSL2591_GAIN_MED);
-    sensor.setTiming(TSL2591_INTEGRATIONTIME_200MS);
+    sensor.setGain(TSL2591_GAIN_MAX);
+    sensor.setTiming(TSL2591_INTEGRATIONTIME_400MS);
     return true;
+  }
+
+  Measurement _measure() {
+    Measurement m;
+    uint32_t lum = sensor.getFullLuminosity();
+    m.ir = lum >> 16;
+    m.full = lum & 0xFFFF;
+    m.visible = m.full - m.ir;
+    m.lux = sensor.calculateLux(m.visible, m.ir);
+    return m;
   }
 
   Measurement measure(std::map<String, String> &environment) {
     Measurement m;
 
-    uint32_t lum = sensor.getFullLuminosity();
-    uint16_t ir, full;
-    ir = lum >> 16;
-    full = lum & 0xFFFF;
-    uint16_t visible = full - ir;
-    m.lux = sensor.calculateLux(full, ir);
-    m.ir = ir;
-    m.visible = visible;
+    std::vector< std::pair<tsl2591Gain_t, tsl2591IntegrationTime_t> > configs = {
+      {TSL2591_GAIN_MAX, TSL2591_INTEGRATIONTIME_600MS},
+      {TSL2591_GAIN_HIGH, TSL2591_INTEGRATIONTIME_600MS},
+      {TSL2591_GAIN_HIGH, TSL2591_INTEGRATIONTIME_400MS},
+      {TSL2591_GAIN_MED, TSL2591_INTEGRATIONTIME_400MS},
+      {TSL2591_GAIN_MED, TSL2591_INTEGRATIONTIME_200MS},
+      {TSL2591_GAIN_LOW, TSL2591_INTEGRATIONTIME_200MS},
+      {TSL2591_GAIN_LOW, TSL2591_INTEGRATIONTIME_100MS}
+    };
 
-    environment["lux"] = String(m.lux);
-    environment["visible"] = String(m.visible);
-    environment["ir"] = String(m.ir);
+    for (auto const &conf : configs) {
+      sensor.setGain(conf.first);
+      sensor.setTiming(conf.second);
+
+      m = _measure();
+      if (m.lux < MAX_LUX && m.full > MAX_VALUE && m.ir < MAX_VALUE) {
+        break;
+      }
+      Serial.println("Too bright, lowering gain and timing.");
+    }
     
     return m;
   }

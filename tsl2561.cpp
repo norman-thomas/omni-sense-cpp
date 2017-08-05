@@ -1,9 +1,14 @@
 #include "tsl2561.h"
 
-#include <Adafruit_TSL2561_U.h>
+#include <TSL2561.h>
+
+#include <vector>
+#include <utility>
 
 namespace tsl2561 {
-  Adafruit_TSL2561_Unified sensor = Adafruit_TSL2561_Unified(TSL2561_ADDR_FLOAT, 12345);
+  TSL2561 sensor = TSL2561(TSL2561_ADDR_FLOAT);
+  unsigned long MAX_LUX = 40000;
+  unsigned long MAX_VALUE = 65535;
 
   bool setup() {
     if(!sensor.begin())
@@ -12,27 +17,45 @@ namespace tsl2561 {
       return false;
     }
 
-    sensor.enableAutoRange(true);
-    sensor.setIntegrationTime(TSL2561_INTEGRATIONTIME_402MS);
+    sensor.setGain(TSL2561_GAIN_16X);
+    sensor.setTiming(TSL2561_INTEGRATIONTIME_402MS);
     return true;
+  }
+
+  Measurement _measure() {
+    Measurement m;
+    uint32_t lum = sensor.getFullLuminosity();
+    m.ir = lum >> 16;
+    m.full = lum & 0xFFFF;
+    m.visible = m.full - m.ir;
+    m.lux = sensor.calculateLux(m.visible, m.ir);
+    return m;
   }
 
   Measurement measure(std::map<String, String> &environment) {
     Measurement m;
 
-    sensors_event_t event;
-    sensor.getEvent(&event);
+    std::vector< std::pair<tsl2561Gain_t, tsl2561IntegrationTime_t> > configs = {
+      {TSL2561_GAIN_16X, TSL2561_INTEGRATIONTIME_402MS},
+      {TSL2561_GAIN_0X, TSL2561_INTEGRATIONTIME_402MS},
+      {TSL2561_GAIN_16X, TSL2561_INTEGRATIONTIME_101MS},
+      {TSL2561_GAIN_0X, TSL2561_INTEGRATIONTIME_101MS},
+      {TSL2561_GAIN_16X, TSL2561_INTEGRATIONTIME_13MS},
+      {TSL2561_GAIN_0X, TSL2561_INTEGRATIONTIME_13MS}
+    };
 
-    if (event.light) {
-      m.lux = event.light;
-      m.visible = 0;
-      m.ir = 0;
+    for (auto const &conf : configs) {
+      sensor.setGain(conf.first);
+      sensor.setTiming(conf.second);
+
+      m = _measure();
+      if (m.lux < MAX_LUX && m.full > MAX_VALUE && m.ir < MAX_VALUE) {
+        break;
+      }
+      Serial.println("Too bright, lowering gain and timing.");
     }
-
-    environment["lux"] = String(m.lux);
-    environment["visible"] = String(m.visible);
-    environment["ir"] = String(m.ir);
-
+    
+    return m;
     return m;
   }
 }
