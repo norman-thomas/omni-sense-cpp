@@ -28,7 +28,7 @@ namespace tsl2561 {
     m.ir = lum >> 16;
     m.full = lum & 0xFFFF;
     m.visible = m.full - m.ir;
-    m.lux = sensor.calculateLux(m.visible, m.ir);
+    m.lux = sensor.calculateLux(m.full, m.ir);
     return m;
   }
 
@@ -38,9 +38,7 @@ namespace tsl2561 {
     std::vector< std::pair<tsl2561Gain_t, tsl2561IntegrationTime_t> > configs = {
       {TSL2561_GAIN_16X, TSL2561_INTEGRATIONTIME_402MS},
       {TSL2561_GAIN_0X, TSL2561_INTEGRATIONTIME_402MS},
-      {TSL2561_GAIN_16X, TSL2561_INTEGRATIONTIME_101MS},
       {TSL2561_GAIN_0X, TSL2561_INTEGRATIONTIME_101MS},
-      {TSL2561_GAIN_16X, TSL2561_INTEGRATIONTIME_13MS},
       {TSL2561_GAIN_0X, TSL2561_INTEGRATIONTIME_13MS}
     };
 
@@ -49,13 +47,15 @@ namespace tsl2561 {
       sensor.setTiming(conf.second);
 
       m = _measure();
-      if (m.lux < MAX_LUX && m.full > MAX_VALUE && m.ir < MAX_VALUE) {
+      if (m.lux < MAX_LUX && m.full < MAX_VALUE && m.ir < MAX_VALUE) {
         break;
       }
       Serial.println("Too bright, lowering gain and timing.");
     }
     
-    return m;
+    environment["lux"] = String(m.lux);
+    environment["visible"] = String(m.visible);
+    environment["ir"] = String(m.ir);
     return m;
   }
 }
