@@ -57,7 +57,7 @@
 
 #define MQTT_JSON MQTT_PREFIX "/json"
 #define MQTT_ENVIRONMENT MQTT_JSON "/environment"
-#define MQTT_AIRQUALITY MQTT_JSON "/environment"
+#define MQTT_AIRQUALITY MQTT_JSON "/airquality"
 
 #define MQTT_DUST_RATIO MQTT_PREFIX "/dustRatio"
 #define MQTT_DUST_CONCENTRATION MQTT_PREFIX "/dustConcentration"
