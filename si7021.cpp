@@ -9,7 +9,7 @@ namespace si7021 {
   bool setup() {
     bool status = sensor.begin();
     if (!status) {
-      Serial.println("Could not find a valid BMP280 sensor, check wiring!");
+      Serial.println("Could not find a valid Si7021 sensor, check wiring!");
     }
     return status;
   }
