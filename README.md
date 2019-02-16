@@ -23,7 +23,7 @@ Values are periodically measured and published via MQTT.
 ## Wiring
 
 * connect the sensor(s) to the I2C ports (SDA, SCL) of the controller
-** in case of the ESP8266 NodeMCU and Wemos D1 Mini, the sensor's SCL and SDA should be hooked up to the controller's D1 and D2 pins respectively
+  * in case of the ESP8266 NodeMCU and Wemos D1 Mini, the sensor's SCL and SDA should be hooked up to the controller's D1 and D2 pins respectively
 
 ## Installation
 
